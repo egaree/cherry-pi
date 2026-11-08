@@ -1,0 +1,5 @@
+# Permessi delle cartelle di egare (formato makedevs), sopra system/device_table.txt.
+# <nome> <tipo> <modo> <uid> <gid> <major> <minor> <start> <inc> <count>
+/etc/egare	d	700	0	0	-	-	-	-	-
+/var/lib/egare	d	700	0	0	-	-	-	-	-
+/var/lib/flowrt	d	750	1001	1001	-	-	-	-	-

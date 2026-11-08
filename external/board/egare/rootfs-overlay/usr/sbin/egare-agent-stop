@@ -1,0 +1,31 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026 Corley S.r.l.
+#
+# egare-agent-stop — ferma egare-agent prima dello spegnimento (riga ::shutdown: dell'inittab,
+# prima di rcK). BusyBox init esegue prima le righe di shutdown (rcK toglie la rete) e solo dopo
+# manda SIGTERM a tutti, con SIGKILL un secondo dopo: troppo poco per i 10 s che l'agent dà a
+# flowrt. Qui l'agent si ferma con la rete ancora su. Design: egare,
+# docs/design/2026-11-08-f1c200s-scheda-di-prova.md §5.3.
+#
+# Crea il file di fermo (init non rilancia l'agent), manda SIGTERM e aspetta al massimo
+# STOP_WAIT secondi. Esce con 1 se l'agent non è uscito in tempo.
+
+RUN=${EGARE_RUN:-/run}
+SLEEP=${EGARE_SLEEP:-sleep}
+STOP_WAIT=${EGARE_STOP_WAIT:-15}
+
+: > "$RUN/egare-agent.hold"
+pid=$(cat "$RUN/egare-agent.pid" 2>/dev/null)
+[ -n "$pid" ] && kill -TERM "$pid" 2>/dev/null || exit 0
+
+i=0
+while kill -0 "$pid" 2>/dev/null; do
+	if [ "$i" -ge "$STOP_WAIT" ]; then
+		echo "egare-agent-stop: l'agent (pid $pid) non è uscito entro $STOP_WAIT s" >&2
+		exit 1
+	fi
+	$SLEEP 1
+	i=$((i + 1))
+done
+exit 0

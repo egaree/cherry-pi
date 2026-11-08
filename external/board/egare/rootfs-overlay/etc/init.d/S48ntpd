@@ -1,0 +1,52 @@
+#!/bin/sh
+#
+# egare: ntpd di BusyBox. La scheda non ha RTC e riparte dal 1970: senza ora il TLS verso
+# IoT Core fallisce. I server sono raggiunti attraverso il NAT del PC.
+
+DAEMON="ntpd"
+PIDFILE="/var/run/$DAEMON.pid"
+
+NTPD_ARGS="-p 0.pool.ntp.org -p 1.pool.ntp.org -p 2.pool.ntp.org"
+
+# shellcheck source=/dev/null
+[ -r "/etc/default/$DAEMON" ] && . "/etc/default/$DAEMON"
+
+start() {
+	printf 'Starting %s: ' "$DAEMON"
+	# shellcheck disable=SC2086 # we need the word splitting
+	start-stop-daemon --start --background --make-pidfile \
+		--pidfile "$PIDFILE" --exec "/usr/sbin/$DAEMON" \
+		-- -n $NTPD_ARGS
+	status=$?
+	if [ "$status" -eq 0 ]; then
+		echo "OK"
+	else
+		echo "FAIL"
+	fi
+	return "$status"
+}
+
+stop() {
+	printf 'Stopping %s: ' "$DAEMON"
+	start-stop-daemon --stop --pidfile "$PIDFILE" --exec "/usr/sbin/$DAEMON"
+	status=$?
+	if [ "$status" -eq 0 ]; then
+		echo "OK"
+		rm -f "$PIDFILE"
+	else
+		echo "FAIL"
+	fi
+	return "$status"
+}
+
+case "$1" in
+	start|stop)
+		"$1";;
+	restart|reload)
+		stop
+		sleep 1
+		start;;
+	*)
+		echo "Usage: $0 {start|stop|restart|reload}"
+		exit 1
+esac

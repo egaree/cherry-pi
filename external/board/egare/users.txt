@@ -1,0 +1,4 @@
+# Utenti di egare (formato makeusers di Buildroot).
+# flowrt esegue il flow dell'utente con un uid diverso da root: non legge /etc/egare né
+# /var/lib/egare (egare, design 2026-11-04 §5). Password bloccata, senza shell.
+flowrt 1001 flowrt 1001 * /var/lib/flowrt /bin/false - flowrt di egare

@@ -1,0 +1,110 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026 Corley S.r.l.
+#
+# egare-agent-run — avvia egare-agent sotto l'init di BusyBox (riga ::respawn: dell'inittab).
+# Quando esce, init lo rilancia: è il "restart" dell'agent. Design: egare,
+# docs/design/2026-11-08-f1c200s-scheda-di-prova.md §5.3.
+#
+#   touch /run/egare-agent.hold; killall egare-agent    ferma l'agent (rm per riprendere)
+#   killall egare-agent                                  lo riavvia (init rilancia lo script)
+#   /etc/default/egare-agent                             EGARE_AGENT_ARGS e variabili (GOMEMLIMIT)
+#
+# Le variabili EGARE_* qui sotto le cambiano solo i test (external/board/egare/test-agent.sh).
+
+BIN=${EGARE_AGENT_BIN:-/usr/bin/egare-agent}
+ETC=${EGARE_ETC:-/etc/egare}
+RUN=${EGARE_RUN:-/run}
+DEFAULTS=${EGARE_DEFAULTS:-/etc/default/egare-agent}
+IMAGE=${EGARE_IMAGE:-/etc/egare-image}
+LOGGER=${EGARE_LOGGER:-logger -t egare-agent}
+SLEEP=${EGARE_SLEEP:-sleep}
+PIDOF=${EGARE_PIDOF:-pidof}
+KILLALL=${EGARE_KILLALL:-killall}
+HOLD_WAIT=${EGARE_HOLD_WAIT:-30}
+TIME_WAIT=${EGARE_TIME_WAIT:-60}
+FAIL_WAIT=${EGARE_FAIL_WAIT:-10}
+
+# variabili interne: non devono arrivare all'agent
+unset EGARE_AGENT_BIN EGARE_ETC EGARE_RUN EGARE_DEFAULTS EGARE_IMAGE EGARE_LOGGER EGARE_SLEEP \
+	EGARE_PIDOF EGARE_KILLALL EGARE_HOLD_WAIT EGARE_TIME_WAIT EGARE_FAIL_WAIT EGARE_STOP_WAIT
+
+log() { echo "$*" | $LOGGER; }
+
+# 1. fermo, o agent non ancora installato: si aspetta e si esce (init rilancia). Il messaggio
+#    va nel syslog una volta sola per avvio della scheda.
+motivo=
+if [ -e "$RUN/egare-agent.hold" ]; then
+	motivo="fermo ($RUN/egare-agent.hold)"
+elif [ ! -x "$BIN" ]; then
+	motivo="manca $BIN (devices/f1c200s/push.sh)"
+elif [ ! -f "$ETC/bootstrap.json" ]; then
+	motivo="manca $ETC/bootstrap.json (devices/f1c200s/push-etc.sh)"
+fi
+if [ -n "$motivo" ]; then
+	if [ ! -e "$RUN/egare-agent.waiting" ]; then
+		log "in attesa: $motivo"
+		: > "$RUN/egare-agent.waiting"
+	fi
+	$SLEEP "$HOLD_WAIT"
+	exit 0
+fi
+rm -f "$RUN/egare-agent.waiting"
+
+# 2. ora: senza RTC la scheda parte dal 1970 e il TLS rifiuta i certificati. Si aspetta ntpd
+#    finché l'anno è prima di quello della build dell'immagine, al massimo TIME_WAIT secondi.
+min_anno=$(awk '{ print substr($3, 1, 4) }' "$IMAGE" 2>/dev/null)
+case "$min_anno" in [0-9][0-9][0-9][0-9]) ;; *) min_anno=0 ;; esac
+i=0
+while [ "$(date +%Y)" -lt "$min_anno" ] && [ "$i" -lt "$TIME_WAIT" ]; do
+	$SLEEP 1
+	i=$((i + 1))
+done
+[ "$(date +%Y)" -lt "$min_anno" ] && log "ora non ancora sincronizzata ($(date -u)): parto lo stesso"
+
+# 3. copia del flow attivo (/run è tmpfs)
+mkdir -p "$RUN/egare" && chmod 0755 "$RUN/egare"
+
+# 4. variabili dell'agent: tutte esportate, tranne EGARE_AGENT_ARGS che diventa la riga di comando
+EGARE_AGENT_ARGS=
+if [ -r "$DEFAULTS" ]; then
+	set -a
+	# shellcheck disable=SC1090
+	. "$DEFAULTS"
+	set +a
+fi
+args=$EGARE_AGENT_ARGS
+unset EGARE_AGENT_ARGS
+
+# fermo arrivato durante l'attesa dell'ora (egare-agent-stop allo spegnimento): niente avvio
+[ -e "$RUN/egare-agent.hold" ] && exit 0
+
+# 5. l'agent: sh -c scrive il proprio pid e poi diventa l'agent con exec, così il pid nel file
+#    è quello dell'agent (egare-agent-stop). L'output va nel syslog; il codice di uscita
+#    dell'agent passa da un file, perché la pipe restituisce quello del logger.
+pidfile=$RUN/egare-agent.pid
+rcfile=$RUN/egare-agent.rc
+# shellcheck disable=SC2016,SC2086
+{
+	sh -c 'echo $$ > "$0"; exec "$@"' "$pidfile" "$BIN" $args
+	echo $? > "$rcfile"
+} 2>&1 | $LOGGER
+codice=$(cat "$rcfile" 2>/dev/null || echo 1)
+rm -f "$pidfile" "$rcfile"
+
+# flowrt rimasto: l'agent lo avvia in un suo gruppo di processi e, se muore di colpo (OOM,
+# panic, SIGKILL), flowrt resta vivo; il prossimo agent ne avvierebbe un secondo. Sulla Uno Q lo
+# evitava il riavvio dell'intero container.
+if $PIDOF flowrt >/dev/null 2>&1; then
+	log "flowrt rimasto dopo l'uscita dell'agent ($codice): lo fermo"
+	$KILLALL -q -TERM flowrt
+	$SLEEP 2
+	$KILLALL -q -KILL flowrt
+fi
+
+# 6. uscita con errore: un'attesa prima di uscire, altrimenti init lo rilancerebbe a raffica
+if [ "$codice" -ne 0 ]; then
+	log "uscito con $codice: riparto tra $FAIL_WAIT s"
+	$SLEEP "$FAIL_WAIT"
+fi
+exit "$codice"

@@ -1,0 +1,2 @@
+# Opzioni di BusyBox in più per egare: ntpd per l'ora all'avvio (la scheda non ha RTC).
+CONFIG_NTPD=y

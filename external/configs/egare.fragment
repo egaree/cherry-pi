@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026 Corley S.r.l.
+#
+# Opzioni di egare sopra ftvogue_f1c200s_defconfig. Non è un defconfig: lo unisce
+# board/egare/configure.sh (merge_config.sh di Buildroot), così le modifiche della base al suo
+# defconfig arrivano qui con la fusione da upstream. Si scrive a mano, non con savedefconfig.
+# Design: egare, docs/design/2026-11-08-f1c200s-scheda-di-prova.md §5.
+BR2_TARGET_GENERIC_HOSTNAME="egare-f1c200s"
+BR2_ROOTFS_DEVICE_TABLE="system/device_table.txt $(BR2_EXTERNAL_F1C200S_PATH)/board/egare/permissions.txt"
+BR2_ROOTFS_USERS_TABLES="$(BR2_EXTERNAL_F1C200S_PATH)/board/egare/users.txt"
+BR2_ROOTFS_OVERLAY="$(BR2_EXTERNAL_F1C200S_PATH)/board/egare/rootfs-overlay"
+BR2_ROOTFS_POST_BUILD_SCRIPT="$(BR2_EXTERNAL_F1C200S_PATH)/board/egare/post-build.sh"
+BR2_PACKAGE_BUSYBOX_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_F1C200S_PATH)/board/egare/busybox.fragment"
+# il fragment del kernel della base, ripetuto, più quello di egare: se la base ne cambia il
+# percorso, va allineato qui (check.sh config lo controlla)
+BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_F1C200S_PATH)/board/ftvogue-f1c200s/linux.fragment $(BR2_EXTERNAL_F1C200S_PATH)/board/egare/linux.fragment"
+BR2_PACKAGE_DROPBEAR=y
+# BR2_PACKAGE_DROPBEAR_CLIENT is not set
+BR2_PACKAGE_DROPBEAR_DISABLE_REVERSEDNS=y

@@ -1,0 +1,8 @@
+# Variabili di egare-agent (le legge /usr/sbin/egare-agent-run). Dopo una modifica:
+#   killall egare-agent
+#
+# Opzioni della riga di comando, per esempio --hold-trial per il caso TIMED_OUT.
+EGARE_AGENT_ARGS=""
+# Le altre variabili passano all'ambiente dell'agent. Per le misure di memoria:
+#GOMEMLIMIT=20MiB
+#GOGC=50
