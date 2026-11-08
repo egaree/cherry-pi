@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026 Corley S.r.l.
+#
+# Frammento applicato sopra sunxi_defconfig del kernel.
+#
+# La riga che conta e' la prima: sunxi_defconfig e' ARMv7 multiplatform, e
+# l'F1C200s e' un ARM926EJ-S, cioe' ARMv5TE. Senza questo ribaltamento il
+# kernel prodotto non gira sulla board. Verifica attesa nel .config finale:
+# CONFIG_CPU_ARM926T=y.
+# CONFIG_ARCH_MULTI_V7 is not set
+CONFIG_ARCH_MULTI_V5=y
+CONFIG_MACH_SUNIV=y
+
+# Console seriale. Nel DTS della board serial0 = &uart1 (pin PA2/PA3),
+# quindi UART1 diventa ttyS0.
+CONFIG_SERIAL_8250=y
+CONFIG_SERIAL_8250_CONSOLE=y
+CONFIG_SERIAL_8250_DW=y
+
+# Boot da SD: p1 FAT (zImage + dtb), p2 ext4 (rootfs).
+CONFIG_MMC=y
+CONFIG_MMC_SUNXI=y
+CONFIG_EXT4_FS=y
+CONFIG_VFAT_FS=y
+CONFIG_NLS_CODEPAGE_437=y
+CONFIG_NLS_ISO8859_1=y
+
+# Boot da SPI NAND: rootfs UBIFS sul volume ubi0:rootfs. Tutto built-in,
+# niente initramfs. Le partizioni arrivano da cmdline (mtdparts=) perche'
+# il DTS upstream non ne dichiara. SPI_SUN6I copre spi0 via il compatible
+# di fallback allwinner,sun8i-h3-spi; e' gia' in sunxi_defconfig, ripetuto
+# perche' senza di lui la NAND sparisce in silenzio.
+CONFIG_SPI_SUN6I=y
+CONFIG_MTD=y
+CONFIG_MTD_SPI_NAND=y
+CONFIG_MTD_CMDLINE_PARTS=y
+CONFIG_MTD_UBI=y
+CONFIG_UBIFS_FS=y
+
+CONFIG_UEVENT_HELPER=y
+
+# Su 64 MB di DDR1, e senza pannello configurato, non pagano il loro costo.
+# CONFIG_DRM is not set
+# CONFIG_CMA is not set

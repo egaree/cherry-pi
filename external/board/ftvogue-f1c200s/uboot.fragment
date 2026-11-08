@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026 Corley S.r.l.
+#
+# Frammento applicato sopra lctech_pi_f1c200s_defconfig di U-Boot.
+
+# L'header TTL della board e' su UART1 (PA2/PA3) -> CONS_INDEX=2.
+# Il defconfig upstream lo ha gia', e' ripetuto qui perche' e' l'unico
+# valore che, se sbagliato, produce silenzio assoluto sulla seriale.
+CONFIG_CONS_INDEX=2
+
+# Boot esplicito, niente bootstd/distro-boot e niente boot.scr: meno pezzi
+# mobili, e nessun fallback che maschera un errore. Attenzione: definire
+# CONFIG_BOOTCOMMAND disattiva di fatto extlinux.conf e boot.scr.
+#
+# Un solo U-Boot per SD e NAND. Su suniv U-Boot proper non sa da dove e'
+# partito (sunxi_get_boot_source() restituisce sempre MMC0), quindi si usa
+# la garanzia della BROM: se una SD avviabile e' inserita parte da li'. Se
+# la FAT della SD c'e', si usa la SD; altrimenti la NAND. E' una selezione,
+# non un fallback: se il ramo scelto fallisce, il boot si ferma.
+# I bootargs stanno fra virgolette perche' hush tratta '(' come subshell.
+# CONFIG_BOOTARGS non si usa: lo imposta ciascun ramo.
+# CONFIG_USE_BOOTARGS is not set
+CONFIG_USE_BOOTCOMMAND=y
+CONFIG_BOOTCOMMAND="if test -e mmc 0:1 zImage; then echo boot: SD; setenv bootargs \"console=ttyS0,115200 earlyprintk root=/dev/mmcblk0p2 rootwait rw\"; load mmc 0:1 0x80008000 zImage && load mmc 0:1 0x81800000 suniv-f1c200s-lctech-pi.dtb; else echo boot: NAND; setenv bootargs \"console=ttyS0,115200 earlyprintk mtdparts=spi0.0:1M(boot),-(ubi) ubi.mtd=ubi root=ubi0:rootfs rootfstype=ubifs rw\"; ubi part ubi && ubifsmount ubi0:rootfs && ubifsload 0x80008000 /boot/zImage && ubifsload 0x81800000 /boot/suniv-f1c200s-lctech-pi.dtb; fi && bootz 0x80008000 - 0x81800000"
+
+# Boot da SPI NAND. L'SPL mainline non sa leggerla: servono le patch in
+# patches/uboot/ (serie di Icenowy Zheng, 2022, portata a 2026.07). La
+# pagina assunta e' quella reale del chip (2 KiB): solo l'SPL sta nel
+# formato "1 KiB per pagina" della BROM, U-Boot proper e' lineare.
+# 0x48000 = 0x40000 (dove flash-nand.sh scrive il .bin) + 0x8000 (offset
+# di u-boot.img dentro u-boot-sunxi-with-spl.bin).
+CONFIG_SPL_SPI_SUNXI=y
+CONFIG_SPL_SPI_SUNXI_NAND=y
+CONFIG_SPL_SPI_SUNXI_NAND_ASSUMED_PAGESIZE=0x800
+CONFIG_SYS_SPI_U_BOOT_OFFS=0x48000
+
+# SPI NAND in U-Boot proper: tutto mainline. Il controller spi0 si aggancia
+# via il compatible di fallback allwinner,sun8i-h3-spi.
+CONFIG_DM_MTD=y
+CONFIG_MTD_SPI_NAND=y
+CONFIG_CMD_MTD=y
+CONFIG_CMD_MTDPARTS=y
+CONFIG_MTDIDS_DEFAULT="spi-nand0=spi0.0"
+CONFIG_MTDPARTS_DEFAULT="mtdparts=spi0.0:1M(boot),-(ubi)"
+CONFIG_CMD_UBI=y
+CONFIG_CMD_UBIFS=y
+
+# L'environment nel defconfig upstream sta su SPI NOR, che qui non esiste,
+# e su FAT (default di sunxi): un uboot.env sulla SD sostituirebbe in
+# silenzio il bootcmd. Nessun environment persistente: vale quello
+# compilato, coerente con il bootcmd esplicito.
+# CONFIG_ENV_IS_IN_SPI_FLASH is not set
+# CONFIG_ENV_IS_IN_FAT is not set
+CONFIG_ENV_IS_NOWHERE=y

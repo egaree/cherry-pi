@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026 Corley S.r.l.
+name: F1C200S
+desc: FTVOGUE F1C200S / Lctech Pi F1C200s (Allwinner suniv) — Buildroot external tree

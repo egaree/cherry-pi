@@ -1,0 +1,136 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026 Corley S.r.l.
+#
+# Controlli che si possono fare senza hardware e senza una build completa.
+#
+# NON c'e' una build di Buildroot, e non e' una dimenticanza: toolchain +
+# kernel + U-Boot non stanno nei tempi di un runner gratuito. Per la stessa
+# ragione qui non gira docs/check-image.sh, che ha bisogno degli artefatti:
+# quello si lancia a mano con `make check` dopo la build.
+#
+# Quello che invece si puo' verificare qui e' tutto cio' che si rompe in
+# silenzio: un defconfig non piu' canonico, uno script con un errore di
+# sintassi, un link morto fra i documenti.
+name: checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  defconfig:
+    # `make savedefconfig` non deve generare diff. Se lo genera, qualcuno ha
+    # modificato un defconfig a mano senza rigenerarlo, e la prossima persona
+    # che lancia savedefconfig si trova un diff spurio da spiegare.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: true
+      - name: dipendenze di kconfig
+        run: sudo apt-get update && sudo apt-get install -y build-essential libncurses-dev
+      - name: savedefconfig non genera diff
+        run: |
+          set -euo pipefail
+          for d in external/configs/*_defconfig; do
+            name="$(basename "$d")"
+            echo "::group::$name"
+            make -C buildroot O="$PWD/out-$name" BR2_EXTERNAL="$PWD/external" "$name"
+            make -C buildroot O="$PWD/out-$name" BR2_EXTERNAL="$PWD/external" savedefconfig
+            echo "::endgroup::"
+          done
+          git diff --exit-code external/configs/
+      - name: la toolchain resta glibc, non uClibc
+        # Regressione silenziosa: se la versione di linux-headers scelta non
+        # esiste nella choice, glibc puo' sparire e Kconfig ripiega su uClibc
+        # senza dire niente. Vedi docs/SCELTE-DI-PROGETTO.md.
+        run: |
+          set -euo pipefail
+          for d in external/configs/*_defconfig; do
+            name="$(basename "$d")"
+            libc="$(sed -n 's/^BR2_TOOLCHAIN_BUILDROOT_LIBC="\(.*\)"$/\1/p' "out-$name/.config")"
+            echo "$name -> $libc"
+            [ "$libc" = glibc ] || { echo "::error::$name usa $libc invece di glibc"; exit 1; }
+          done
+      - name: il kernel resta ARMv5/suniv
+        # Il cuore del porting: sunxi_defconfig e' ARMv7 multiplatform, e se il
+        # fragment smette di ribaltarlo si ottiene un kernel che non gira su
+        # ARM926EJ-S. Qui si controlla il defconfig Buildroot, non il .config
+        # del kernel (che richiederebbe di scaricarlo e configurarlo).
+        run: |
+          set -euo pipefail
+          # Si controlla il .config RISULTANTE, non il defconfig: BR2_arm926t
+          # e' il default di BR2_arm, quindi savedefconfig lo rimuove dal
+          # defconfig. Controllarlo qui intercetta anche il caso in cui un
+          # bump di Buildroot cambiasse il default dell'architettura ARM.
+          for d in external/configs/*_defconfig; do
+            name="$(basename "$d")"
+            grep -q '^BR2_arm926t=y' "out-$name/.config" \
+              || { echo "::error::$name non risolve a BR2_arm926t"; exit 1; }
+          done
+          for f in external/board/*/linux.fragment; do
+            grep -q '^# CONFIG_ARCH_MULTI_V7 is not set' "$f" \
+              || { echo "::error::$f non disattiva ARCH_MULTI_V7"; exit 1; }
+            grep -q '^CONFIG_MACH_SUNIV=y' "$f" \
+              || { echo "::error::$f non abilita MACH_SUNIV"; exit 1; }
+          done
+          echo "ok"
+      - name: nessun comando SPI NOR nei fragment U-Boot
+        # La flash di questa board e' SPI NAND: un 'sf read' nel bootcmd e'
+        # sempre un copia-incolla da una ricetta LicheePi Nano.
+        run: |
+          set -euo pipefail
+          if grep -rn 'sf read\|sf probe\|spiflash-write' external/board/*/uboot.fragment; then
+            echo "::error::comandi SPI NOR in un fragment U-Boot: la flash e' NAND"
+            exit 1
+          fi
+          echo "ok"
+
+  scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: sintassi degli script
+        run: |
+          set -euo pipefail
+          for f in setup.sh docs/*.sh; do
+            bash -n "$f" && echo "ok  $f"
+          done
+      - name: shellcheck
+        run: |
+          sudo apt-get update && sudo apt-get install -y shellcheck
+          shellcheck -S warning setup.sh docs/*.sh
+      - name: flash-nand.sh si ferma sugli errori di xfel
+        # xfel esce con 0 anche quando erase/write falliscono: il test usa un
+        # xfel finto per provare che lo script non dichiari "fatto" lo stesso.
+        run: ./docs/test-flash-nand.sh
+      - name: gli script sono eseguibili
+        run: |
+          set -euo pipefail
+          for f in setup.sh docs/*.sh; do
+            [ -x "$f" ] || { echo "::error::$f non e' eseguibile"; exit 1; }
+          done
+          echo "tutti eseguibili"
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: nessun link morto fra i documenti
+        run: |
+          set -uo pipefail
+          rc=0
+          for f in README.md CLAUDE.md docs/*.md; do
+            dir="$(dirname "$f")"
+            for l in $(grep -ohE '\]\([^)#]+(#[^)]*)?\)' "$f" | sed 's/^](//; s/)$//; s/#.*//'); do
+              case "$l" in
+                http*|"") continue ;;
+                ../../*) continue ;;
+              esac
+              if [ ! -e "$dir/$l" ]; then
+                echo "::error file=$f::link morto: $l"
+                rc=1
+              fi
+            done
+          done
+          exit $rc

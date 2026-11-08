@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026 Corley S.r.l.
+menu "FTVOGUE F1C200S (Allwinner suniv)"
+
+comment "Nessuna opzione specifica di questo albero."
+comment "La board e' interamente mainline: non servono blob ne' tool vendor."
+comment "I package propri, quando ci saranno, si aggiungono qui con:"
+comment "  source \"$BR2_EXTERNAL_F1C200S_PATH/package/<nome>/Config.in\""
+
+endmenu

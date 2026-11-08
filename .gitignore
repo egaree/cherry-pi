@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026 Corley S.r.l.
+# Output di Buildroot: toolchain, sorgenti scaricati, immagini.
+/output/
+
+# Output dei job di CI eseguiti in locale
+/out-*_defconfig/
+
+# Configurazione locale della macchina: tipicamente DL_DIR e MIRROR.
+# Non deve entrare in git: l'albero e' condiviso, i percorsi di qualcuno no.
+/local.mk
