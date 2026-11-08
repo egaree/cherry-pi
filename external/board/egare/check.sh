@@ -50,6 +50,10 @@ check_config() {
 		&& pass "BR2_ROOTFS_DEVICE_TABLE con quella della base e permissions.txt" \
 		|| fail "BR2_ROOTFS_DEVICE_TABLE senza system/device_table.txt o permissions.txt"
 
+	vale "$c" '^BR2_GLOBAL_PATCH_DIR=".*board/ftvogue-f1c200s/patches .*board/egare/patches"' \
+		&& pass "BR2_GLOBAL_PATCH_DIR con le patch della base e di egare" \
+		|| fail "BR2_GLOBAL_PATCH_DIR senza board/ftvogue-f1c200s/patches o board/egare/patches"
+
 	# il defconfig della base c'è ancora
 	for riga in \
 		'BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE="6.12.111"' \
@@ -87,7 +91,7 @@ check_target() {
 		etc/default/dropbear etc/default/egare-agent; do
 		[ -f "$t/$r" ] && pass "$r" || fail "manca $r"
 	done
-	for r in etc/init.d/S48ntpd usr/sbin/egare-agent-run usr/sbin/egare-agent-stop; do
+	for r in etc/init.d/S48ntpd etc/init.d/S12gpio usr/sbin/egare-agent-run usr/sbin/egare-agent-stop; do
 		[ -x "$t/$r" ] && pass "$r eseguibile" || fail "$r assente o non eseguibile"
 	done
 	vale "$t/etc/network/interfaces" '^iface usb0 inet static' && pass "usb0 statica" || fail "interfaces senza usb0"
@@ -122,6 +126,14 @@ check_image() {
 		trovato=$(modo_di "$percorso")
 		[ "$trovato" = "$atteso" ] && pass "$percorso $atteso" || fail "$percorso: '$trovato' invece di '$atteso'"
 	done
+	# nomi delle linee GPIO nel DTB: 131 voci vuote (131 byte nulli) e poi PE3, PE4, PE5, quindi
+	# PE0 e PE1 senza nome. Non si cerca "PE0\0" in tutto il DTB: compare anche in uart0-pe-pins.
+	python3 -I -c '
+import sys
+d = open(sys.argv[1], "rb").read()
+sys.exit(0 if b"\0" * 131 + b"PE3\0PE4\0PE5\0" in d else 1)' \
+		"$O/images/suniv-f1c200s-lctech-pi.dtb" 2>/dev/null \
+		&& pass "DTB con le linee PE3, PE4, PE5 per nome" || fail "DTB senza 131 voci vuote seguite da PE3, PE4, PE5"
 	# la tabella degli utenti Buildroot la applica solo al filesystem, non a output/target
 	debugfs -R "cat /etc/passwd" "$img" 2>/dev/null | grep -q '^flowrt:x:1001:1001:' \
 		&& pass "utente flowrt 1001" || fail "manca flowrt:x:1001:1001 in /etc/passwd"

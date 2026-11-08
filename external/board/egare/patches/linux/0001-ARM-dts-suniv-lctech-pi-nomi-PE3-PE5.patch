@@ -1,0 +1,49 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Walter Dal Mut <walter.dalmut@gmail.com>
+Date: Sun, 8 Nov 2026 14:32:44 +0100
+Subject: [PATCH] ARM: dts: suniv: lctech-pi: nomi delle linee PE3-PE5
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Dà un nome alle linee PE3, PE4 e PE5 del gpiochip0, così flowrt e gli
+strumenti di libgpiod le trovano per nome senza contare gli indici.
+Le altre 131 voci della proprietà restano vuote.
+---
+ .../dts/allwinner/suniv-f1c200s-lctech-pi.dts | 26 +++++++++++++++++++
+ 1 file changed, 26 insertions(+)
+
+diff --git a/arch/arm/boot/dts/allwinner/suniv-f1c200s-lctech-pi.dts b/arch/arm/boot/dts/allwinner/suniv-f1c200s-lctech-pi.dts
+index 2d2a3f0..5020e45 100644
+--- a/arch/arm/boot/dts/allwinner/suniv-f1c200s-lctech-pi.dts
++++ b/arch/arm/boot/dts/allwinner/suniv-f1c200s-lctech-pi.dts
+@@ -74,3 +74,29 @@
+ &usbphy {
+ 	status = "okay";
+ };
++
++/*
++ * Nomi delle linee del gpiochip0 (indice = 32 * porta + numero, porta E = 4):
++ * PE3, PE4 e PE5 si trovano per nome (gpiofind, libgpiod). PE0/PE1 restano
++ * senza nome e non si toccano.
++ */
++&pio {
++	gpio-line-names =
++		"", "", "", "", "", "", "", "",
++		"", "", "", "", "", "", "", "",
++		"", "", "", "", "", "", "", "",
++		"", "", "", "", "", "", "", "",
++		"", "", "", "", "", "", "", "",
++		"", "", "", "", "", "", "", "",
++		"", "", "", "", "", "", "", "",
++		"", "", "", "", "", "", "", "",
++		"", "", "", "", "", "", "", "",
++		"", "", "", "", "", "", "", "",
++		"", "", "", "", "", "", "", "",
++		"", "", "", "", "", "", "", "",
++		"", "", "", "", "", "", "", "",
++		"", "", "", "", "", "", "", "",
++		"", "", "", "", "", "", "", "",
++		"", "", "", "", "", "", "", "",
++		"", "", "", "PE3", "PE4", "PE5";
++};

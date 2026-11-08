@@ -29,7 +29,8 @@ cambiano, così la fusione da `upstream` resta semplice.
 | `board/egare/users.txt` | utente `flowrt` uid e gid 1001, senza shell |
 | `board/egare/permissions.txt` | `/etc/egare` e `/var/lib/egare` 0700 root, `/var/lib/flowrt` 0750 `flowrt` |
 | `board/egare/post-build.sh` | `authorized_keys`, righe dell'`inittab`, `/etc/egare-image` |
-| `board/egare/rootfs-overlay/` | gadget USB, `usb0`, DNS, syslog, `ntpd`, dropbear, `egare-agent-run`/`-stop` |
+| `board/egare/rootfs-overlay/` | gadget USB, `usb0`, DNS, syslog, `S12gpio` (permessi del gpiochip), `ntpd`, dropbear, `egare-agent-run`/`-stop` |
+| `board/egare/patches/linux/` | patch del kernel: `gpio-line-names` di `&pio` nel DTS della scheda (PE3, PE4, PE5 per nome) |
 | `board/egare/check.sh` | controlli senza scheda: `config`, `target`, `image` |
 | `board/egare/test-agent.sh` | prove sull'host di `egare-agent-run`, `egare-agent-stop` e `post-build.sh` |
 
@@ -66,6 +67,7 @@ L'immagine è `output/images/sdcard.img`; si scrive sulla SD come nella base. La
 | ssh | `ssh root@192.168.7.2`, solo chiave. Le chiavi host le crea dropbear alla prima connessione e restano sulla SD |
 | log | `syslogd` in RAM, `/var/log/messages`, 3 × 256 KB |
 | agent | `::respawn:/usr/sbin/egare-agent-run` nell'`inittab`; aspetta finché mancano `/usr/bin/egare-agent` o `/etc/egare/bootstrap.json` |
+| GPIO | `PE3`, `PE4`, `PE5` per nome (`gpio-line-names`); `/dev/gpiochip0` gruppo `flowrt`, 0660 (`S12gpio`, a ogni avvio) |
 | versione | `/etc/egare-image`: `cherry-pi <git describe> <data della build>` |
 
 Root non ha password, come nella base: è un banco di prova (design di egare, §3).

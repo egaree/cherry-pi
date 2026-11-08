@@ -1,0 +1,34 @@
+#!/bin/sh
+#
+# egare: /dev/gpiochip* a root:flowrt 0660. L'immagine ha solo devtmpfs (niente mdev):
+# a ogni avvio il nodo nasce root:root 0600 e flowrt (uid 1001) non potrebbe aprirlo.
+
+start() {
+	printf 'Starting gpio: '
+	trovato=0
+	for c in /dev/gpiochip*; do
+		[ -e "$c" ] || continue
+		trovato=1
+		chgrp flowrt "$c" && chmod 0660 "$c" \
+			|| logger -t S12gpio "impossibile cambiare gruppo o permessi di $c"
+	done
+	if [ "$trovato" -eq 0 ]; then
+		logger -t S12gpio "nessun /dev/gpiochip*"
+		echo "no gpiochip"
+	else
+		echo "OK"
+	fi
+	return 0
+}
+
+case "$1" in
+	start)
+		start;;
+	stop)
+		;;
+	restart|reload)
+		start;;
+	*)
+		echo "Usage: $0 {start|stop|restart|reload}"
+		exit 1
+esac
