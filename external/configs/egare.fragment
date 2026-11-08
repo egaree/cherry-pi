@@ -20,3 +20,7 @@ BR2_GLOBAL_PATCH_DIR="$(BR2_EXTERNAL_F1C200S_PATH)/board/ftvogue-f1c200s/patches
 BR2_PACKAGE_DROPBEAR=y
 # BR2_PACKAGE_DROPBEAR_CLIENT is not set
 BR2_PACKAGE_DROPBEAR_DISABLE_REVERSEDNS=y
+# GPIO dalla shell: gpioinfo, gpioget, gpiomon sopra il character device (libgpiod v2).
+# Lo stato delle linee usate da flowrt si legge da /sys/kernel/debug/gpio (fstab, post-build.sh).
+BR2_PACKAGE_LIBGPIOD2=y
+BR2_PACKAGE_LIBGPIOD2_TOOLS=y

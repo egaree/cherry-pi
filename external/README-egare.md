@@ -22,13 +22,13 @@ cambiano, così la fusione da `upstream` resta semplice.
 
 | file | |
 | --- | --- |
-| `configs/egare.fragment` | opzioni sopra `ftvogue_f1c200s_defconfig`: dropbear, overlay, utenti, permessi, fragment del kernel, hostname `egare-f1c200s` |
+| `configs/egare.fragment` | opzioni sopra `ftvogue_f1c200s_defconfig`: dropbear, libgpiod2 con i tool, overlay, utenti, permessi, fragment del kernel, hostname `egare-f1c200s` |
 | `board/egare/configure.sh` | `.config` = defconfig della base + fragment (al posto di `make ftvogue_f1c200s_defconfig`) |
 | `board/egare/linux.fragment` | gadget Ethernet `g_ether` come modulo (RNDIS ed ECM): il fragment della base non lo abilita |
 | `board/egare/busybox.fragment` | `ntpd` in BusyBox |
 | `board/egare/users.txt` | utente `flowrt` uid e gid 1001, senza shell |
 | `board/egare/permissions.txt` | `/etc/egare` e `/var/lib/egare` 0700 root, `/var/lib/flowrt` 0750 `flowrt` |
-| `board/egare/post-build.sh` | `authorized_keys`, righe dell'`inittab`, `/etc/egare-image` |
+| `board/egare/post-build.sh` | `authorized_keys`, righe dell'`inittab`, `/etc/egare-image`, debugfs in `fstab` |
 | `board/egare/rootfs-overlay/` | gadget USB, `usb0`, DNS, syslog, `S12gpio` (permessi del gpiochip), `ntpd`, dropbear, `egare-agent-run`/`-stop` |
 | `board/egare/patches/linux/` | patch del kernel: `gpio-line-names` di `&pio` nel DTS della scheda (PE3, PE4, PE5 per nome) |
 | `board/egare/check.sh` | controlli senza scheda: `config`, `target`, `image` |
@@ -68,6 +68,7 @@ L'immagine è `output/images/sdcard.img`; si scrive sulla SD come nella base. La
 | log | `syslogd` in RAM, `/var/log/messages`, 3 × 256 KB |
 | agent | `::respawn:/usr/sbin/egare-agent-run` nell'`inittab`; aspetta finché mancano `/usr/bin/egare-agent` o `/etc/egare/bootstrap.json` |
 | GPIO | `PE3`, `PE4`, `PE5` per nome (`gpio-line-names`); `/dev/gpiochip0` gruppo `flowrt`, 0660 (`S12gpio`, a ogni avvio) |
+| GPIO dalla shell | `gpioinfo` (nomi, chi usa la linea, direzione), `gpioget`/`gpiomon` sulle linee libere (libgpiod v2); `cat /sys/kernel/debug/gpio` per il livello delle linee di flowrt (debugfs montato da `fstab`) |
 | versione | `/etc/egare-image`: `cherry-pi <git describe> <data della build>` |
 
 Root non ha password, come nella base: è un banco di prova (design di egare, §3).

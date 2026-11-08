@@ -34,7 +34,9 @@ check_config() {
 		'BR2_PACKAGE_DROPBEAR=y' \
 		'# BR2_PACKAGE_DROPBEAR_CLIENT is not set' \
 		'BR2_PACKAGE_DROPBEAR_DISABLE_REVERSEDNS=y' \
-		'BR2_TARGET_GENERIC_HOSTNAME="egare-f1c200s"'; do
+		'BR2_TARGET_GENERIC_HOSTNAME="egare-f1c200s"' \
+		'BR2_PACKAGE_LIBGPIOD2=y' \
+		'BR2_PACKAGE_LIBGPIOD2_TOOLS=y'; do
 		ha "$c" "$riga" && pass "$riga" || fail "manca: $riga"
 	done
 	local opz
@@ -94,6 +96,9 @@ check_target() {
 	for r in etc/init.d/S48ntpd etc/init.d/S12gpio usr/sbin/egare-agent-run usr/sbin/egare-agent-stop; do
 		[ -x "$t/$r" ] && pass "$r eseguibile" || fail "$r assente o non eseguibile"
 	done
+	[ -x "$t/usr/bin/gpioinfo" ] && pass "gpioinfo (libgpiod)" || fail "manca usr/bin/gpioinfo"
+	vale "$t/etc/fstab" '^debugfs[[:space:]]+/sys/kernel/debug[[:space:]]+debugfs' && pass "fstab: debugfs" \
+		|| fail "fstab senza debugfs su /sys/kernel/debug"
 	vale "$t/etc/network/interfaces" '^iface usb0 inet static' && pass "usb0 statica" || fail "interfaces senza usb0"
 	[ "$(awk '{ print NF }' "$t/etc/egare-image" 2>/dev/null)" = 3 ] && pass "egare-image: $(cat "$t/etc/egare-image")" \
 		|| fail "etc/egare-image assente o senza tre campi"

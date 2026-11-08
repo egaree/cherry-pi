@@ -203,6 +203,7 @@ prepara_target() {
 	::shutdown:/sbin/swapoff -a
 	::shutdown:/bin/umount -a -r
 	EOF2
+	printf 'proc\t\t/proc\t\tproc\tdefaults\t0\t0\nsysfs\t\t/sys\t\tsysfs\tdefaults\t0\t0\n' > "$T/target/etc/fstab"
 	echo 'ssh-ed25519 AAAAtest prova@pc' > "$T/key.pub"
 }
 riga_n() { grep -nxF "$1" "$T/target/etc/inittab" | cut -d: -f1; }
@@ -240,6 +241,10 @@ controlla "inittab: shutdown dell'agent prima di rcK" prima
 controlla "inittab: la getty resta" test "$(grep -c GENERIC_SERIAL "$T/target/etc/inittab")" -eq 1
 campi() { [ "$(awk '{ print NF }' "$T/target/etc/egare-image")" -eq 3 ] && grep -qE '^cherry-pi [^ ]+ [0-9]{4}-[0-9]{2}-[0-9]{2}$' "$T/target/etc/egare-image"; }
 controlla "egare-image: cherry-pi <versione> <data>" campi
+debugfs_righe() { grep -cE '^debugfs[[:space:]]+/sys/kernel/debug[[:space:]]+debugfs[[:space:]]' "$T/target/etc/fstab"; }
+controlla "fstab: debugfs una volta sola" test "$(debugfs_righe)" -eq 1
+dopo_sys() { [ "$(grep -n '^debugfs' "$T/target/etc/fstab" | cut -d: -f1)" -gt "$(grep -n '^sysfs' "$T/target/etc/fstab" | cut -d: -f1)" ]; }
+controlla "fstab: debugfs dopo sysfs" dopo_sys
 
 rm -rf "$T"
 exit $rc
