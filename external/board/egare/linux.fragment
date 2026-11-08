@@ -1,0 +1,5 @@
+# Opzioni del kernel di egare sopra quelle della base (board/ftvogue-f1c200s/linux.fragment).
+# Rete via USB sulla porta OTG: gadget Ethernet g_ether come modulo, con RNDIS ed ECM. Lo carica
+# /etc/modules-load.d/g_ether.conf con i MAC fissi (egare, docs/runbooks/f1c200s-rete-usb.md).
+CONFIG_USB_ETH=m
+CONFIG_USB_ETH_RNDIS=y

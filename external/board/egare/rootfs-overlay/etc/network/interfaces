@@ -1,0 +1,10 @@
+# egare: lo e la rete via USB (gadget g_ether, MAC fissi in /etc/modules-load.d/g_ether.conf).
+# Il PC fa NAT (profilo NetworkManager "cherrypi", egare docs/runbooks/f1c200s-rete-usb.md).
+auto lo
+iface lo inet loopback
+
+auto usb0
+iface usb0 inet static
+	address 192.168.7.2
+	netmask 255.255.255.0
+	gateway 192.168.7.1

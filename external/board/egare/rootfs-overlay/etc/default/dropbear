@@ -1,0 +1,2 @@
+# egare: solo chiavi (/root/.ssh/authorized_keys), niente login con password
+DROPBEAR_ARGS="-s"

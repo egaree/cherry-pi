@@ -1,0 +1,2 @@
+# egare: log in RAM (/var/log -> /tmp), al massimo 3 file da 256 KB
+SYSLOGD_ARGS="-s 256 -b 2"
